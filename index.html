@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard OncoTech - Análisis de Consultas</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --oncotech-red: #8B2F2F;
+            --oncotech-red-light: #A64444;
+            --oncotech-gray: #5A5552;
+            --oncotech-light-gray: #E8E6E3;
+            --oncotech-dark: #2C2420;
+            --bg-light: #F7F6F4;
+            --white: #FFFFFF;
+            --shadow: 0 2px 8px rgba(139, 47, 47, 0.08);
+            --shadow-hover: 0 4px 12px rgba(139, 47, 47, 0.15);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--oncotech-dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--oncotech-red) 0%, #6B2424 100%);
+            color: var(--white);
+            padding: 1.5rem 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .header-content {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        .logo-section img {
+            height: 60px;
+            width: auto;
+            filter: brightness(0) invert(1);
+        }
+        
+        .logo-section .title-group h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+        
+        .logo-section .title-group p {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+        
+        .period-info {
+            text-align: right;
+            font-size: 0.85rem;
+            opacity: 0.95;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
+        .filters-section {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+        }
+        
+        .filters-section h2 {
+            color: var(--oncotech-red);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--oncotech-gray);
+            font-size: 0.9rem;
+        }
+        
+        .filter-group select {
+            padding: 0.7rem;
+            border: 2px solid var(--oncotech-light-gray);
+            border-radius: 8px;
+            background: var(--white);
+            color: var(--oncotech-dark);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .filter-group select:hover {
+            border-color: var(--oncotech-red);
+        }
+        
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--oncotech-red);
+            box-shadow: 0 0 0 3px rgba(139, 47, 47, 0.1);
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .metric-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--oncotech-red);
+        }
+        
+        .metric-card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+        
+        .metric-card h3 {
+            font-size: 0.85rem;
+            color: var(--oncotech-gray);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .metric-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--oncotech-red);
+            margin-bottom: 0.3rem;
+        }
+        
+        .metric-card .subvalue {
+            font-size: 0.85rem;
+            color: var(--oncotech-gray);
+        }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .chart-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            position: relative;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chart-card.size-small {
+            grid-column: span 1;
+        }
+        
+        .chart-card.size-medium {
+            grid-column: span 1;
+        }
+        
+        .chart-card.size-large {
+            grid-column: span 2;
+        }
+        
+        .chart-card.size-full {
+            grid-column: 1 / -1;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--oncotech-light-gray);
+            padding-bottom: 0.5rem;
+        }
+        
+        .chart-header h3 {
+            color: var(--oncotech-red);
+            font-size: 1.1rem;
+            flex: 1;
+        }
+        
+        .chart-controls {
+            display: flex;
+            gap: 0.3rem;
+        }
+        
+        .chart-controls button {
+            background: var(--oncotech-light-gray);
+            border: none;
+            padding: 0.4rem 0.7rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        
+        .chart-controls button:hover {
+            background: var(--oncotech-red-light);
+            color: var(--white);
+        }
+        
+        .chart-controls button.active {
+            background: var(--oncotech-red);
+            color: var(--white);
+        }
+        
+        .chart-content {
+            flex: 1;
+            position: relative;
+            min-height: 300px;
+        }
+        
+        .chart-content canvas {
+            max-height: 100%;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        table th {
+            background: var(--oncotech-red);
+            color: var(--white);
+            padding: 0.8rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        table td {
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid var(--oncotech-light-gray);
+            font-size: 0.9rem;
+        }
+        
+        table tr:hover {
+            background: var(--bg-light);
+        }
+        
+        .efficiency-badge {
+            display: inline-block;
+            padding: 0.3rem 0.6rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        
+        .efficiency-high {
+            background: #2D7A3E;
+            color: var(--white);
+        }
+        
+        .efficiency-medium {
+            background: #D4A017;
+            color: var(--white);
+        }
+        
+        .efficiency-low {
+            background: #A84040;
+            color: var(--white);
+        }
+        
+        .footer {
+            background: var(--oncotech-dark);
+            color: var(--white);
+            text-align: center;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        @media (max-width: 1024px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-card.size-small,
+            .chart-card.size-medium,
+            .chart-card.size-large {
+                grid-column: span 1;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .period-info {
+                text-align: center;
+            }
+            
+            .logo-section {
+                flex-direction: column;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-controls button {
+                font-size: 0.7rem;
+                padding: 0.3rem 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <img src="https://www.jotform.com/uploads/jeanp27/form_files/6323eca82437343f876eb45b46ac2835.62e8ba149e2bd2.49547120.png" alt="OncoTech Logo">
+                <div class="title-group">
+                    <h1>Dashboard OncoTech</h1>
+                    <p>Análisis de Consultas y Signos Vitales</p>
+                </div>
+            </div>
+            <div class="period-info">
+                <strong>Período:</strong> <span id="periodo-texto">Cargando...</span><br>
+                <strong>Generado:</strong> <span id="fecha-generacion"></span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Filtros -->
+        <div class="filters-section">
+            <h2>🔍 Filtros</h2>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="filtro-sv-requerido">SV Requeridos</label>
+                    <select id="filtro-sv-requerido">
+                        <option value="Todos">Todos</option>
+                        <option value="Sí">Sí - Requeridos</option>
+                        <option value="No">No - No requeridos</option>
+                        <option value="Opcional">Opcional</option>
+                        <option value="Endoscopia">Endoscopia</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filtro-servicio">Servicio</label>
+                    <select id="filtro-servicio">
+                        <option value="Todos">Todos los servicios</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filtro-profesional">Profesional</label>
+                    <select id="filtro-profesional">
+                        <option value="Todos">Todos los profesionales</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filtro-turno">Turno</label>
+                    <select id="filtro-turno">
+                        <option value="Todos">Todos</option>
+                        <option value="Matutino">Matutino</option>
+                        <option value="Vespertino">Vespertino</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Métricas principales -->
+        <div class="metrics-grid" id="metrics-container">
+            <!-- Se llenarán dinámicamente -->
+        </div>
+        
+        <!-- Gráficos -->
+        <div class="charts-container" id="charts-container">
+            <!-- Se llenarán dinámicamente -->
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; 2025 OncoTech - Clínica Especializada en Cáncer | La Paz, BCS</p>
+    </div>
+    
+    <script>
+const DATOS_EMBEBIDOS = [{"ID Cita": 15394, "Fecha": "2025-11-05", "Hora": "18:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "Sí", "SV requerido": "No especificado", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Miércoles", "Hora_del_dia": 18, "Mes_Año": "2025-11"}, {"ID Cita": 15391, "Fecha": "2025-11-05", "Hora": "20:30:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 20, "Mes_Año": "2025-11"}, {"ID Cita": 15383, "Fecha": "2025-11-06", "Hora": "18:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 6.0, "Demora": 0.0, "Dia_semana": "Jueves", "Hora_del_dia": 18, "Mes_Año": "2025-11"}, {"ID Cita": 15378, "Fecha": "2025-11-06", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 104.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 16, "Mes_Año": "2025-11"}, {"ID Cita": 15362, "Fecha": "2025-11-06", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Jueves", "Hora_del_dia": 12, "Mes_Año": "2025-11"}, {"ID Cita": 15355, "Fecha": "2025-11-04", "Hora": "17:00:00", "Servicio": "Nutrición oncológica", "Profesional": "Lic. Siria Álvarez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 93.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-11"}, {"ID Cita": 15354, "Fecha": "2025-11-05", "Hora": "09:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Miércoles", "Hora_del_dia": 9, "Mes_Año": "2025-11"}, {"ID Cita": 15353, "Fecha": "2025-11-05", "Hora": "13:00:00", "Servicio": "Colonoscopia", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "Sí", "SV requerido": "Endoscopia", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Miércoles", "Hora_del_dia": 13, "Mes_Año": "2025-11"}, {"ID Cita": 15352, "Fecha": "2025-11-05", "Hora": "10:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 10, "Mes_Año": "2025-11"}, {"ID Cita": 15350, "Fecha": "2025-11-04", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Martes", "Hora_del_dia": 12, "Mes_Año": "2025-11"}, {"ID Cita": 15347, "Fecha": "2025-11-05", "Hora": "11:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 11, "Mes_Año": "2025-11"}, {"ID Cita": 15346, "Fecha": "2025-11-05", "Hora": "12:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 12, "Mes_Año": "2025-11"}, {"ID Cita": 15344, "Fecha": "2025-11-04", "Hora": "12:30:00", "Servicio": "Radio oncología", "Profesional": "Dra. Guadalupe Méndez", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 12, "Mes_Año": "2025-11"}, {"ID Cita": 15343, "Fecha": "2025-11-05", "Hora": "19:00:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 99.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-11"}, {"ID Cita": 15342, "Fecha": "2025-11-03", "Hora": "17:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 35.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 17, "Mes_Año": "2025-11"}, {"ID Cita": 15341, "Fecha": "2025-11-04", "Hora": "09:00:00", "Servicio": "Endoscopia", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 9, "Mes_Año": "2025-11"}, {"ID Cita": 15340, "Fecha": "2025-11-05", "Hora": "19:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 27.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-11"}, {"ID Cita": 15339, "Fecha": "2025-11-05", "Hora": "19:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 117.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-11"}, {"ID Cita": 15338, "Fecha": "2025-11-04", "Hora": "14:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 114.0, "Demora": 11.0, "Dia_semana": "Martes", "Hora_del_dia": 14, "Mes_Año": "2025-11"}, {"ID Cita": 15336, "Fecha": "2025-11-05", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Miércoles", "Hora_del_dia": 12, "Mes_Año": "2025-11"}, {"ID Cita": 15335, "Fecha": "2025-11-04", "Hora": "11:00:00", "Servicio": "Lavado de catéter", "Profesional": "Enf. Abraham López-Conde", "Toma de SV": "No", "SV requerido": "No", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 11, "Mes_Año": "2025-11"}, {"ID Cita": 15333, "Fecha": "2025-11-04", "Hora": "18:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 57.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 18, "Mes_Año": "2025-11"}, {"ID Cita": 15330, "Fecha": "2025-11-04", "Hora": "11:30:00", "Servicio": "Oncología Quirúrgica", "Profesional": "Dra. Adriana Cepeda", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 11, "Mes_Año": "2025-11"}, {"ID Cita": 15328, "Fecha": "2025-11-03", "Hora": "11:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 11, "Mes_Año": "2025-11"}, {"ID Cita": 15317, "Fecha": "2025-11-03", "Hora": "17:30:00", "Servicio": "Lavado de catéter", "Profesional": "Lic.Enf. José Antonio Bañalez Reyes", "Toma de SV": "No", "SV requerido": "No", "Turno": "Vespertino", "Total Estancia": 13.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 17, "Mes_Año": "2025-11"}, {"ID Cita": 15316, "Fecha": "2025-11-03", "Hora": "18:00:00", "Servicio": "Radio oncología", "Profesional": "Dra Fabiola Aguero", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 100.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 18, "Mes_Año": "2025-11"}, {"ID Cita": 15313, "Fecha": "2025-11-04", "Hora": "19:30:00", "Servicio": "Medicina Interna", "Profesional": "Dr. Enrique Espinoza", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 56.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 19, "Mes_Año": "2025-11"}, {"ID Cita": 15312, "Fecha": "2025-11-03", "Hora": "18:00:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 69.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 18, "Mes_Año": "2025-11"}, {"ID Cita": 15311, "Fecha": "2025-11-03", "Hora": "17:00:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 62.0, "Demora": 0.0, "Dia_semana": "Lunes", "Hora_del_dia": 17, "Mes_Año": "2025-11"}, {"ID Cita": 15309, "Fecha": "2025-11-04", "Hora": "19:30:00", "Servicio": "Colonoscopia", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Vespertino", "Total Estancia": 56.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 19, "Mes_Año": "2025-11"}, {"ID Cita": 15308, "Fecha": "2025-10-31", "Hora": "11:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15299, "Fecha": "2025-10-30", "Hora": "17:30:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 100.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15298, "Fecha": "2025-11-03", "Hora": "10:00:00", "Servicio": "Clínica del dolor", "Profesional": "Dra. Iliana Armenta", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 10, "Mes_Año": "2025-11"}, {"ID Cita": 15294, "Fecha": "2025-11-03", "Hora": "20:30:00", "Servicio": "Oncología Médica IMSS", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 31.0, "Demora": 0.0, "Dia_semana": "Lunes", "Hora_del_dia": 20, "Mes_Año": "2025-11"}, {"ID Cita": 15293, "Fecha": "2025-10-30", "Hora": "20:00:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 67.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15292, "Fecha": "2025-10-30", "Hora": "19:00:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 39.0, "Demora": 0.0, "Dia_semana": "Jueves", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15291, "Fecha": "2025-10-30", "Hora": "18:15:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15288, "Fecha": "2025-10-29", "Hora": "19:45:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 51.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15287, "Fecha": "2025-10-30", "Hora": "12:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15286, "Fecha": "2025-10-31", "Hora": "19:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 51.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15281, "Fecha": "2025-10-28", "Hora": "15:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 56.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 15, "Mes_Año": "2025-10"}, {"ID Cita": 15278, "Fecha": "2025-10-30", "Hora": "13:00:00", "Servicio": "Radio oncología", "Profesional": "Dra. Guadalupe Méndez", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Jueves", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15276, "Fecha": "2025-10-31", "Hora": "18:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 69.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15272, "Fecha": "2025-10-31", "Hora": "13:00:00", "Servicio": "Radio oncología", "Profesional": "Dra. Guadalupe Méndez", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15270, "Fecha": "2025-10-28", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Martes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15269, "Fecha": "2025-10-27", "Hora": "18:00:00", "Servicio": "Aplicación de tratamiento IM/SC", "Profesional": "Lic.Enf. José Antonio Bañalez Reyes", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 12.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15268, "Fecha": "2025-10-28", "Hora": "17:30:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 74.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15265, "Fecha": "2025-10-30", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Jueves", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15261, "Fecha": "2025-11-04", "Hora": "18:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 51.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 18, "Mes_Año": "2025-11"}, {"ID Cita": 15259, "Fecha": "2025-10-28", "Hora": "18:00:00", "Servicio": "Oncología pediátrica", "Profesional": "Dra. Merit Velázquez", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 94.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15258, "Fecha": "2025-10-27", "Hora": "19:45:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 22.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15246, "Fecha": "2025-10-24", "Hora": "12:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Mextli Gabriela López Fragoso", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Viernes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15244, "Fecha": "2025-11-06", "Hora": "14:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Germán Vega", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 182.0, "Demora": 4.0, "Dia_semana": "Jueves", "Hora_del_dia": 14, "Mes_Año": "2025-11"}, {"ID Cita": 15243, "Fecha": "2025-10-30", "Hora": "13:30:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Germán Vega", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Jueves", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15239, "Fecha": "2025-10-29", "Hora": "19:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 69.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15238, "Fecha": "2025-11-04", "Hora": "19:30:00", "Servicio": "Oncología Médica IMSS", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 19, "Mes_Año": "2025-11"}, {"ID Cita": 15237, "Fecha": "2025-10-24", "Hora": "11:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15232, "Fecha": "2025-11-04", "Hora": "12:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Rolando Armienta", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 12, "Mes_Año": "2025-11"}, {"ID Cita": 15229, "Fecha": "2025-11-03", "Hora": "16:30:00", "Servicio": "Toma de muestra sanguínea (Periférica)", "Profesional": "Sin asignar", "Toma de SV": "No", "SV requerido": "No", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 16, "Mes_Año": "2025-11"}, {"ID Cita": 15228, "Fecha": "2025-11-03", "Hora": "16:30:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 43.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 16, "Mes_Año": "2025-11"}, {"ID Cita": 15227, "Fecha": "2025-11-04", "Hora": "12:00:00", "Servicio": "Toma de muestra sanguínea (Periférica)", "Profesional": "Enf. Abraham López-Conde", "Toma de SV": "No", "SV requerido": "No", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 12, "Mes_Año": "2025-11"}, {"ID Cita": 15226, "Fecha": "2025-11-04", "Hora": "12:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 12, "Mes_Año": "2025-11"}, {"ID Cita": 15225, "Fecha": "2025-11-03", "Hora": "17:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 27.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 17, "Mes_Año": "2025-11"}, {"ID Cita": 15224, "Fecha": "2025-10-30", "Hora": "16:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 77.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15222, "Fecha": "2025-10-27", "Hora": "12:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Mextli Gabriela López Fragoso", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15221, "Fecha": "2025-10-27", "Hora": "13:30:00", "Servicio": "Colonoscopia", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "Sí", "SV requerido": "Endoscopia", "Turno": "Matutino", "Total Estancia": 160.0, "Demora": 4.0, "Dia_semana": "Lunes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15220, "Fecha": "2025-10-29", "Hora": "19:30:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 85.0, "Demora": 3.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15219, "Fecha": "2025-11-03", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 12, "Mes_Año": "2025-11"}, {"ID Cita": 15215, "Fecha": "2025-10-24", "Hora": "20:00:00", "Servicio": "Medicina Interna", "Profesional": "Dr. Enrique Espinoza", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 58.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15210, "Fecha": "2025-10-24", "Hora": "16:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 34.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15209, "Fecha": "2025-10-22", "Hora": "20:00:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 63.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15207, "Fecha": "2025-10-23", "Hora": "11:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15205, "Fecha": "2025-10-30", "Hora": "12:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Mextli Gabriela López Fragoso", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15204, "Fecha": "2025-10-24", "Hora": "18:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dra. Merit Velázquez", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 125.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15202, "Fecha": "2025-10-27", "Hora": "18:45:00", "Servicio": "Colocación de balón gástrico", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Vespertino", "Total Estancia": 67.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15200, "Fecha": "2025-11-06", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 59.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 17, "Mes_Año": "2025-11"}, {"ID Cita": 15198, "Fecha": "2025-10-28", "Hora": "19:15:00", "Servicio": "Oncología Médica IMSS", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15197, "Fecha": "2025-10-28", "Hora": "18:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 100.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15192, "Fecha": "2025-10-27", "Hora": "13:00:00", "Servicio": "Radio oncología", "Profesional": "Dra. Guadalupe Méndez", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15191, "Fecha": "2025-10-21", "Hora": "16:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 79.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15190, "Fecha": "2025-10-27", "Hora": "17:00:00", "Servicio": "Colonoscopia y endoscopia alta", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Vespertino", "Total Estancia": 111.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15188, "Fecha": "2025-10-27", "Hora": "19:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 54.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15185, "Fecha": "2025-10-21", "Hora": "12:00:00", "Servicio": "Oncología Quirúrgica", "Profesional": "Dra. Adriana Cepeda", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Martes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15184, "Fecha": "2025-10-21", "Hora": "17:00:00", "Servicio": "Cuidados paliativos domiciliarios", "Profesional": "Dr. Germán Vega", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 34.0, "Demora": 0.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15183, "Fecha": "2025-10-24", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Viernes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15181, "Fecha": "2025-10-22", "Hora": "19:00:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 35.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15180, "Fecha": "2025-10-24", "Hora": "19:30:00", "Servicio": "Medicina Interna", "Profesional": "Lic.Enf. José Antonio Bañalez Reyes", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 52.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15179, "Fecha": "2025-10-21", "Hora": "11:00:00", "Servicio": "Oncología Quirúrgica", "Profesional": "Dra. Adriana Cepeda", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15176, "Fecha": "2025-10-22", "Hora": "19:45:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15174, "Fecha": "2025-10-29", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15173, "Fecha": "2025-11-04", "Hora": "16:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 56.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 16, "Mes_Año": "2025-11"}, {"ID Cita": 15172, "Fecha": "2025-10-21", "Hora": "11:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15170, "Fecha": "2025-10-21", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 83.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15166, "Fecha": "2025-10-24", "Hora": "17:00:00", "Servicio": "Nutrición oncológica", "Profesional": "Andrés Benitez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 101.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15165, "Fecha": "2025-10-23", "Hora": "18:30:00", "Servicio": "Clínica del dolor", "Profesional": "Dra. Iliana Armenta", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 14.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15163, "Fecha": "2025-10-20", "Hora": "19:30:00", "Servicio": "Medicina Interna", "Profesional": "Lic.Enf. José Antonio Bañalez Reyes", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 101.0, "Demora": 30.0, "Dia_semana": "Lunes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15162, "Fecha": "2025-10-28", "Hora": "16:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 74.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15161, "Fecha": "2025-10-21", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15156, "Fecha": "2025-10-20", "Hora": "17:30:00", "Servicio": "Radio oncología", "Profesional": "Dra. Guadalupe Méndez", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15155, "Fecha": "2025-10-27", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 146.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15154, "Fecha": "2025-10-28", "Hora": "17:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 40.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15153, "Fecha": "2025-10-28", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 74.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15150, "Fecha": "2025-10-17", "Hora": "13:30:00", "Servicio": "Radio oncología", "Profesional": "Dra. Guadalupe Méndez", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15149, "Fecha": "2025-10-17", "Hora": "13:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15146, "Fecha": "2025-10-20", "Hora": "09:00:00", "Servicio": "Toma de muestra sanguínea (Periférica)", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "No", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 9, "Mes_Año": "2025-10"}, {"ID Cita": 15143, "Fecha": "2025-10-16", "Hora": "11:30:00", "Servicio": "Oncología Quirúrgica", "Profesional": "Dra. Adriana Cepeda", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15138, "Fecha": "2025-10-16", "Hora": "11:00:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15137, "Fecha": "2025-11-04", "Hora": "13:30:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Germán Vega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 173.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 13, "Mes_Año": "2025-11"}, {"ID Cita": 15136, "Fecha": "2025-10-28", "Hora": "17:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Germán Vega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 177.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15135, "Fecha": "2025-10-21", "Hora": "13:30:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Germán Vega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 203.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15132, "Fecha": "2025-10-20", "Hora": "19:30:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 66.0, "Demora": 0.0, "Dia_semana": "Lunes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15129, "Fecha": "2025-10-16", "Hora": "12:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Jueves", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15128, "Fecha": "2025-10-20", "Hora": "20:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15127, "Fecha": "2025-10-20", "Hora": "12:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15126, "Fecha": "2025-10-17", "Hora": "10:15:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 10, "Mes_Año": "2025-10"}, {"ID Cita": 15124, "Fecha": "2025-10-20", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15121, "Fecha": "2025-10-17", "Hora": "09:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 9, "Mes_Año": "2025-10"}, {"ID Cita": 15120, "Fecha": "2025-10-17", "Hora": "09:50:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 9, "Mes_Año": "2025-10"}, {"ID Cita": 15118, "Fecha": "2025-11-04", "Hora": "17:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 23.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-11"}, {"ID Cita": 15115, "Fecha": "2025-10-16", "Hora": "12:00:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15113, "Fecha": "2025-10-14", "Hora": "17:30:00", "Servicio": "Consulta de Cirugía General", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 42.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15112, "Fecha": "2025-10-15", "Hora": "20:00:00", "Servicio": "Colonoscopia", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Vespertino", "Total Estancia": 108.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15108, "Fecha": "2025-10-17", "Hora": "18:30:00", "Servicio": "Oncología Médica IMSS", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15107, "Fecha": "2025-10-17", "Hora": "12:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Mextli Gabriela López Fragoso", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15106, "Fecha": "2025-10-14", "Hora": "21:00:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 2605.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 21, "Mes_Año": "2025-10"}, {"ID Cita": 15103, "Fecha": "2025-10-22", "Hora": "21:00:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 21, "Mes_Año": "2025-10"}, {"ID Cita": 15101, "Fecha": "2025-11-05", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 106.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 17, "Mes_Año": "2025-11"}, {"ID Cita": 15100, "Fecha": "2025-10-15", "Hora": "12:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Rolando Armienta", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15098, "Fecha": "2025-11-04", "Hora": "17:30:00", "Servicio": "Aplicación de tratamiento IM/SC", "Profesional": "Enf. Abraham López-Conde", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 39.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-11"}, {"ID Cita": 15096, "Fecha": "2025-10-17", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 51.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15095, "Fecha": "2025-10-22", "Hora": "19:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 43.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15094, "Fecha": "2025-10-14", "Hora": "11:00:00", "Servicio": "Oncología Quirúrgica", "Profesional": "Dra. Adriana Cepeda", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15093, "Fecha": "2025-10-15", "Hora": "13:15:00", "Servicio": "Radio oncología", "Profesional": "Dra. Guadalupe Méndez", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15090, "Fecha": "2025-10-29", "Hora": "20:30:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 22.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15089, "Fecha": "2025-10-14", "Hora": "13:30:00", "Servicio": "Aplicación de tratamiento IM/SC", "Profesional": "Sin asignar", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15085, "Fecha": "2025-10-13", "Hora": "09:00:00", "Servicio": "Oncología Médica", "Profesional": "Sin asignar", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 9, "Mes_Año": "2025-10"}, {"ID Cita": 15083, "Fecha": "2025-10-13", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15078, "Fecha": "2025-10-24", "Hora": "14:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 156.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 14, "Mes_Año": "2025-10"}, {"ID Cita": 15077, "Fecha": "2025-10-17", "Hora": "12:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15076, "Fecha": "2025-10-23", "Hora": "14:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Germán Vega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 196.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 14, "Mes_Año": "2025-10"}, {"ID Cita": 15075, "Fecha": "2025-10-16", "Hora": "14:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Germán Vega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 166.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 14, "Mes_Año": "2025-10"}, {"ID Cita": 15074, "Fecha": "2025-10-10", "Hora": "12:45:00", "Servicio": "Oncología Quirúrgica", "Profesional": "Dra. Adriana Cepeda", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15073, "Fecha": "2025-10-22", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 89.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15072, "Fecha": "2025-10-10", "Hora": "12:00:00", "Servicio": "Oncología Quirúrgica", "Profesional": "Dra. Adriana Cepeda", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15071, "Fecha": "2025-10-30", "Hora": "20:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 72.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15068, "Fecha": "2025-10-30", "Hora": "15:30:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 158.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 15, "Mes_Año": "2025-10"}, {"ID Cita": 15066, "Fecha": "2025-10-10", "Hora": "14:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Germán Vega", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 329.0, "Demora": 12.0, "Dia_semana": "Viernes", "Hora_del_dia": 14, "Mes_Año": "2025-10"}, {"ID Cita": 15064, "Fecha": "2025-10-10", "Hora": "19:00:00", "Servicio": "Lavado de catéter", "Profesional": "Lic.Enf. José Antonio Bañalez Reyes", "Toma de SV": "No", "SV requerido": "No", "Turno": "Vespertino", "Total Estancia": 46.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15063, "Fecha": "2025-10-16", "Hora": "18:30:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 83.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15062, "Fecha": "2025-10-15", "Hora": "19:00:00", "Servicio": "Oncología Médica IMSS", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 52.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15061, "Fecha": "2025-10-13", "Hora": "12:30:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Mextli Gabriela López Fragoso", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15056, "Fecha": "2025-10-10", "Hora": "19:00:00", "Servicio": "Medicina Interna", "Profesional": "Lic.Enf. José Antonio Bañalez Reyes", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 59.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15054, "Fecha": "2025-10-16", "Hora": "09:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 9, "Mes_Año": "2025-10"}, {"ID Cita": 15051, "Fecha": "2025-10-15", "Hora": "20:00:00", "Servicio": "Oncología Médica IMSS", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15049, "Fecha": "2025-10-13", "Hora": "20:00:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 87.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15048, "Fecha": "2025-10-16", "Hora": "19:00:00", "Servicio": "Colonoscopia y endoscopia alta", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Vespertino", "Total Estancia": 117.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15047, "Fecha": "2025-10-10", "Hora": "13:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15046, "Fecha": "2025-10-09", "Hora": "11:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Mextli Gabriela López Fragoso", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15045, "Fecha": "2025-10-22", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 15044, "Fecha": "2025-10-08", "Hora": "13:20:00", "Servicio": "Lavado de catéter", "Profesional": "Sin asignar", "Toma de SV": "No", "SV requerido": "No", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15043, "Fecha": "2025-10-13", "Hora": "21:00:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 78.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 21, "Mes_Año": "2025-10"}, {"ID Cita": 15040, "Fecha": "2025-10-07", "Hora": "20:00:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15039, "Fecha": "2025-10-21", "Hora": "18:00:00", "Servicio": "Nutrición oncológica", "Profesional": "Lic. Siria Álvarez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 15036, "Fecha": "2025-10-13", "Hora": "11:00:00", "Servicio": "Oncología Quirúrgica", "Profesional": "Dra. Adriana Cepeda", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": 0.0, "Dia_semana": "Lunes", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15035, "Fecha": "2025-10-09", "Hora": "11:30:00", "Servicio": "Oncología Quirúrgica", "Profesional": "Dra. Adriana Cepeda", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15033, "Fecha": "2025-10-08", "Hora": "20:15:00", "Servicio": "Colonoscopia", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Vespertino", "Total Estancia": 83.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 15031, "Fecha": "2025-10-16", "Hora": "11:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 15028, "Fecha": "2025-11-06", "Hora": "09:00:00", "Servicio": "Endoscopia", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 9, "Mes_Año": "2025-11"}, {"ID Cita": 15027, "Fecha": "2025-10-10", "Hora": "13:00:00", "Servicio": "Colonoscopia y endoscopia alta", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15023, "Fecha": "2025-10-16", "Hora": "10:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 10, "Mes_Año": "2025-10"}, {"ID Cita": 15022, "Fecha": "2025-10-08", "Hora": "19:00:00", "Servicio": "Colonoscopia", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Vespertino", "Total Estancia": 142.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15021, "Fecha": "2025-10-15", "Hora": "09:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 9, "Mes_Año": "2025-10"}, {"ID Cita": 15020, "Fecha": "2025-10-15", "Hora": "10:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 10, "Mes_Año": "2025-10"}, {"ID Cita": 15019, "Fecha": "2025-10-13", "Hora": "13:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Sin asignar", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 15015, "Fecha": "2025-10-31", "Hora": "19:30:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 53.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15014, "Fecha": "2025-10-28", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 81.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 15010, "Fecha": "2025-10-13", "Hora": "19:30:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 106.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 15007, "Fecha": "2025-10-17", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 67.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15006, "Fecha": "2025-10-14", "Hora": "16:40:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 55.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15004, "Fecha": "2025-10-08", "Hora": "16:30:00", "Servicio": "Nutrición oncológica", "Profesional": "Andrés Benitez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 98.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 15002, "Fecha": "2025-11-05", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 96.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 16, "Mes_Año": "2025-11"}, {"ID Cita": 14998, "Fecha": "2025-10-07", "Hora": "18:00:00", "Servicio": "Nutrición oncológica", "Profesional": "Lic. Siria Álvarez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 84.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 14996, "Fecha": "2025-10-07", "Hora": "12:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Mextli Gabriela López Fragoso", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 14990, "Fecha": "2025-11-05", "Hora": "18:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 18, "Mes_Año": "2025-11"}, {"ID Cita": 14989, "Fecha": "2025-10-10", "Hora": "10:30:00", "Servicio": "Lavado de catéter", "Profesional": "Enf. Abraham López-Conde", "Toma de SV": "No", "SV requerido": "No", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 10, "Mes_Año": "2025-10"}, {"ID Cita": 14988, "Fecha": "2025-10-14", "Hora": "16:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 82.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14987, "Fecha": "2025-11-04", "Hora": "15:45:00", "Servicio": "Toma de muestra sanguínea (Central)", "Profesional": "Enf. Abraham López-Conde", "Toma de SV": "No", "SV requerido": "No", "Turno": "Vespertino", "Total Estancia": 48.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 15, "Mes_Año": "2025-11"}, {"ID Cita": 14986, "Fecha": "2025-11-04", "Hora": "15:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 49.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 15, "Mes_Año": "2025-11"}, {"ID Cita": 14983, "Fecha": "2025-10-23", "Hora": "12:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Rolando Armienta", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 14982, "Fecha": "2025-10-10", "Hora": "10:00:00", "Servicio": "Toma de muestra sanguínea (Central)", "Profesional": "Enf. Abraham López-Conde", "Toma de SV": "No", "SV requerido": "No", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 10, "Mes_Año": "2025-10"}, {"ID Cita": 14981, "Fecha": "2025-10-10", "Hora": "17:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 60.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 14980, "Fecha": "2025-10-10", "Hora": "16:30:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 96.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14978, "Fecha": "2025-10-14", "Hora": "13:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 14977, "Fecha": "2025-10-13", "Hora": "20:30:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 85.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 14976, "Fecha": "2025-10-10", "Hora": "16:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 111.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14975, "Fecha": "2025-10-17", "Hora": "11:40:00", "Servicio": "Toma de muestra sanguínea (Central)", "Profesional": "Sin asignar", "Toma de SV": "No", "SV requerido": "No", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 14974, "Fecha": "2025-10-17", "Hora": "11:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Rolando Armienta", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 14973, "Fecha": "2025-10-14", "Hora": "16:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 83.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14971, "Fecha": "2025-10-13", "Hora": "18:30:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 86.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 14970, "Fecha": "2025-10-09", "Hora": "17:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 152.0, "Demora": 18.0, "Dia_semana": "Jueves", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 14963, "Fecha": "2025-10-08", "Hora": "13:00:00", "Servicio": "Aplicación de tratamiento IM/SC", "Profesional": "Dr. Rolando Armienta", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 14962, "Fecha": "2025-10-08", "Hora": "12:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Rolando Armienta", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 14961, "Fecha": "2025-10-15", "Hora": "19:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 14960, "Fecha": "2025-10-20", "Hora": "18:00:00", "Servicio": "Endoscopia", "Profesional": "Dr. Pavel  Flores Azcárrega", "Toma de SV": "No", "SV requerido": "Endoscopia", "Turno": "Vespertino", "Total Estancia": 91.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 14956, "Fecha": "2025-10-15", "Hora": "11:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 14955, "Fecha": "2025-10-16", "Hora": "10:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 10, "Mes_Año": "2025-10"}, {"ID Cita": 14953, "Fecha": "2025-10-07", "Hora": "19:00:00", "Servicio": "Nutrición oncológica", "Profesional": "Lic. Siria Álvarez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 108.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 14952, "Fecha": "2025-10-17", "Hora": "10:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 10, "Mes_Año": "2025-10"}, {"ID Cita": 14949, "Fecha": "2025-11-05", "Hora": "20:10:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 56.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 20, "Mes_Año": "2025-11"}, {"ID Cita": 14946, "Fecha": "2025-11-04", "Hora": "20:10:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 10.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 20, "Mes_Año": "2025-11"}, {"ID Cita": 14933, "Fecha": "2025-10-31", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 14930, "Fecha": "2025-10-15", "Hora": "19:15:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 6.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 14910, "Fecha": "2025-10-09", "Hora": "09:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Luis  Arteaga", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 9, "Mes_Año": "2025-10"}, {"ID Cita": 14909, "Fecha": "2025-10-24", "Hora": "18:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 43.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 14908, "Fecha": "2025-10-17", "Hora": "15:30:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Rolando Armienta", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 115.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 15, "Mes_Año": "2025-10"}, {"ID Cita": 14907, "Fecha": "2025-10-17", "Hora": "14:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 14, "Mes_Año": "2025-10"}, {"ID Cita": 14896, "Fecha": "2025-10-15", "Hora": "19:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 14890, "Fecha": "2025-10-17", "Hora": "11:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 11, "Mes_Año": "2025-10"}, {"ID Cita": 14889, "Fecha": "2025-11-03", "Hora": "20:10:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 20, "Mes_Año": "2025-11"}, {"ID Cita": 14884, "Fecha": "2025-10-16", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 50.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14873, "Fecha": "2025-10-22", "Hora": "20:10:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 56.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 14867, "Fecha": "2025-10-14", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 49.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14863, "Fecha": "2025-10-09", "Hora": "16:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 79.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14859, "Fecha": "2025-10-14", "Hora": "19:00:00", "Servicio": "Oncología Médica IMSS", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "Sí", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 96.0, "Demora": 0.0, "Dia_semana": "Martes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 14855, "Fecha": "2025-10-13", "Hora": "16:00:00", "Servicio": "Aplicación de tratamiento IM/SC", "Profesional": "Dr. Germán Vega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 245.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14844, "Fecha": "2025-10-15", "Hora": "20:00:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 101.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 14833, "Fecha": "2025-10-27", "Hora": "20:10:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 31.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 14828, "Fecha": "2025-10-15", "Hora": "12:00:00", "Servicio": "Oncología Quirúrgica", "Profesional": "Dra. Adriana Cepeda", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 14827, "Fecha": "2025-10-16", "Hora": "17:00:00", "Servicio": "Nutrición oncológica", "Profesional": "Lic. Siria Álvarez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 115.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 14822, "Fecha": "2025-10-09", "Hora": "18:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 14816, "Fecha": "2025-10-24", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 89.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 14815, "Fecha": "2025-10-15", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 14813, "Fecha": "2025-10-09", "Hora": "15:15:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Paulo Ceja", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 79.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 15, "Mes_Año": "2025-10"}, {"ID Cita": 14811, "Fecha": "2025-10-21", "Hora": "13:00:00", "Servicio": "Lavado de catéter", "Profesional": "Enf. Abraham López-Conde", "Toma de SV": "No", "SV requerido": "No", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 14787, "Fecha": "2025-10-14", "Hora": "20:00:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 2654.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 14781, "Fecha": "2025-10-20", "Hora": "17:00:00", "Servicio": "Nutrición oncológica", "Profesional": "Andrés Benitez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 56.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 14780, "Fecha": "2025-10-10", "Hora": "16:00:00", "Servicio": "Nutrición oncológica", "Profesional": "Lic. Siria Álvarez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 69.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14778, "Fecha": "2025-10-17", "Hora": "19:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 16.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 14770, "Fecha": "2025-10-15", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 75.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14760, "Fecha": "2025-10-08", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 117.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14758, "Fecha": "2025-10-08", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 142.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 14732, "Fecha": "2025-10-21", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 14677, "Fecha": "2025-10-31", "Hora": "13:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 14673, "Fecha": "2025-10-14", "Hora": "18:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 74.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 14668, "Fecha": "2025-10-24", "Hora": "20:10:00", "Servicio": "Psicología oncológica", "Profesional": "Psic. Luis Méndez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 70.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 14665, "Fecha": "2025-10-14", "Hora": "18:30:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 54.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 18, "Mes_Año": "2025-10"}, {"ID Cita": 14634, "Fecha": "2025-10-14", "Hora": "14:50:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 51.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 14, "Mes_Año": "2025-10"}, {"ID Cita": 14578, "Fecha": "2025-10-14", "Hora": "17:20:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 40.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 14576, "Fecha": "2025-10-28", "Hora": "14:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 100.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 14, "Mes_Año": "2025-10"}, {"ID Cita": 14573, "Fecha": "2025-10-20", "Hora": "12:00:00", "Servicio": "Lavado de catéter", "Profesional": "Enf. Abraham López-Conde", "Toma de SV": "No", "SV requerido": "No", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 14546, "Fecha": "2025-10-21", "Hora": "15:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 55.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 15, "Mes_Año": "2025-10"}, {"ID Cita": 14542, "Fecha": "2025-10-17", "Hora": "19:00:00", "Servicio": "Nutrición oncológica", "Profesional": "Lic. Siria Álvarez", "Toma de SV": "No", "SV requerido": "Opcional", "Turno": "Vespertino", "Total Estancia": 36.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 14531, "Fecha": "2025-11-03", "Hora": "12:00:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 12, "Mes_Año": "2025-11"}, {"ID Cita": 14508, "Fecha": "2025-10-13", "Hora": "13:00:00", "Servicio": "Infusión supervisada de tratamiento", "Profesional": "Dr. Germán Vega", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": 314.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 13, "Mes_Año": "2025-10"}, {"ID Cita": 14437, "Fecha": "2025-10-29", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 86.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14267, "Fecha": "2025-10-21", "Hora": "14:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 14, "Mes_Año": "2025-10"}, {"ID Cita": 14231, "Fecha": "2025-10-17", "Hora": "12:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 14224, "Fecha": "2025-10-07", "Hora": "20:15:00", "Servicio": "Medicina Interna", "Profesional": "Lic.Enf. José Antonio Bañalez Reyes", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 65.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 20, "Mes_Año": "2025-10"}, {"ID Cita": 14191, "Fecha": "2025-10-17", "Hora": "19:30:00", "Servicio": "Ginecología oncológica", "Profesional": "Dra. Shelem Vivas", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 25.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 14132, "Fecha": "2025-11-04", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 54.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-11"}, {"ID Cita": 14106, "Fecha": "2025-10-21", "Hora": "17:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 34.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 14098, "Fecha": "2025-10-07", "Hora": "12:00:00", "Servicio": "Oncología Médica", "Profesional": "Dr. Rolando Armienta", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 12, "Mes_Año": "2025-10"}, {"ID Cita": 14042, "Fecha": "2025-10-10", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 102.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 14040, "Fecha": "2025-11-04", "Hora": "16:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 16, "Mes_Año": "2025-11"}, {"ID Cita": 14039, "Fecha": "2025-10-10", "Hora": "17:00:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 59.0, "Demora": -1.0, "Dia_semana": "Viernes", "Hora_del_dia": 17, "Mes_Año": "2025-10"}, {"ID Cita": 13834, "Fecha": "2025-10-09", "Hora": "16:30:00", "Servicio": "Medicina Interna", "Profesional": "Dra. Sonia Orozco", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 0.0, "Demora": -1.0, "Dia_semana": "Jueves", "Hora_del_dia": 16, "Mes_Año": "2025-10"}, {"ID Cita": 13710, "Fecha": "2025-10-07", "Hora": "19:30:00", "Servicio": "Medicina Interna", "Profesional": "Lic.Enf. José Antonio Bañalez Reyes", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 41.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 13571, "Fecha": "2025-10-08", "Hora": "19:30:00", "Servicio": "Medicina Interna", "Profesional": "Lic.Enf. José Antonio Bañalez Reyes", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 29.0, "Demora": -1.0, "Dia_semana": "Miércoles", "Hora_del_dia": 19, "Mes_Año": "2025-10"}, {"ID Cita": 13260, "Fecha": "2025-10-14", "Hora": "14:00:00", "Servicio": "Oncología Médica", "Profesional": "Dra. Anna Gozalishvili", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Matutino", "Total Estancia": -1.0, "Demora": -1.0, "Dia_semana": "Martes", "Hora_del_dia": 14, "Mes_Año": "2025-10"}, {"ID Cita": 13238, "Fecha": "2025-10-20", "Hora": "16:30:00", "Servicio": "Radio oncología", "Profesional": "Dra. Guadalupe Méndez", "Toma de SV": "No", "SV requerido": "Sí", "Turno": "Vespertino", "Total Estancia": 88.0, "Demora": -1.0, "Dia_semana": "Lunes", "Hora_del_dia": 16, "Mes_Año": "2025-10"}];        
+        // Variables globales
+        let datosOriginales = DATOS_EMBEBIDOS;
+        let datosFiltrados = [...datosOriginales];
+        let charts = {};
+        
+        // Inicializar dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Iniciando Dashboard OncoTech...');
+            inicializarDashboard();
+        });
+        
+        function inicializarDashboard() {
+            console.log('📊 Cargando', datosOriginales.length, 'registros');
+            
+            // Configurar fecha de generación
+            const ahora = new Date();
+            document.getElementById('fecha-generacion').textContent = ahora.toLocaleDateString('es-MX', {
+                year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+            
+            // Obtener rango de fechas
+            const fechas = datosOriginales.map(d => new Date(d.Fecha));
+            const fechaMin = new Date(Math.min(...fechas));
+            const fechaMax = new Date(Math.max(...fechas));
+            document.getElementById('periodo-texto').textContent = 
+                `${fechaMin.toLocaleDateString('es-MX')} - ${fechaMax.toLocaleDateString('es-MX')}`;
+            
+            // Poblar filtros
+            poblarFiltros();
+            
+            // Agregar listeners a filtros
+            document.getElementById('filtro-sv-requerido').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtro-servicio').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtro-profesional').addEventListener('change', aplicarFiltros);
+            document.getElementById('filtro-turno').addEventListener('change', aplicarFiltros);
+            
+            // Renderizar dashboard inicial
+            renderizarDashboard();
+            console.log('✅ Dashboard inicializado correctamente');
+        }
+        
+        function poblarFiltros() {
+            // Servicios únicos
+            const servicios = [...new Set(datosOriginales.map(d => d.Servicio))].sort();
+            const selectServicio = document.getElementById('filtro-servicio');
+            servicios.forEach(servicio => {
+                const option = document.createElement('option');
+                option.value = servicio;
+                option.textContent = servicio;
+                selectServicio.appendChild(option);
+            });
+            
+            // Profesionales únicos
+            const profesionales = [...new Set(datosOriginales.map(d => d.Profesional))].sort();
+            const selectProfesional = document.getElementById('filtro-profesional');
+            profesionales.forEach(prof => {
+                const option = document.createElement('option');
+                option.value = prof;
+                option.textContent = prof;
+                selectProfesional.appendChild(option);
+            });
+        }
+        
+        function aplicarFiltros() {
+            const filtroSV = document.getElementById('filtro-sv-requerido').value;
+            const filtroServicio = document.getElementById('filtro-servicio').value;
+            const filtroProfesional = document.getElementById('filtro-profesional').value;
+            const filtroTurno = document.getElementById('filtro-turno').value;
+            
+            datosFiltrados = datosOriginales.filter(dato => {
+                let cumpleSV = filtroSV === 'Todos' || dato['SV requerido'] === filtroSV;
+                let cumpleServicio = filtroServicio === 'Todos' || dato.Servicio === filtroServicio;
+                let cumpleProfesional = filtroProfesional === 'Todos' || dato.Profesional === filtroProfesional;
+                let cumpleTurno = filtroTurno === 'Todos' || dato.Turno === filtroTurno;
+                
+                return cumpleSV && cumpleServicio && cumpleProfesional && cumpleTurno;
+            });
+            
+            console.log('🔍 Filtrado:', datosFiltrados.length, 'registros');
+            renderizarDashboard();
+        }
+        
+        function renderizarDashboard() {
+            calcularMetricas();
+            crearGraficos();
+        }
+        
+        function calcularMetricas() {
+            const total = datosFiltrados.length;
+            const conSV = datosFiltrados.filter(d => d['Toma de SV'] === 'Sí').length;
+            const sinSV = datosFiltrados.filter(d => d['Toma de SV'] === 'No').length;
+            
+            // Registros con estancia válida
+            const conEstancia = datosFiltrados.filter(d => d['Total Estancia'] >= 0).length;
+            const sinEstancia = total - conEstancia;
+            const porcSinEstancia = total > 0 ? ((sinEstancia / total) * 100).toFixed(1) : 0;
+            
+            // Estancia promedio
+            const estancias = datosFiltrados.filter(d => d['Total Estancia'] >= 0).map(d => d['Total Estancia']);
+            const estanciaPromedio = estancias.length > 0 
+                ? (estancias.reduce((a, b) => a + b, 0) / estancias.length).toFixed(1) 
+                : 0;
+            
+            // Demora promedio
+            const demoras = datosFiltrados.filter(d => d.Demora >= 0).map(d => d.Demora);
+            const demoraPromedio = demoras.length > 0 
+                ? (demoras.reduce((a, b) => a + b, 0) / demoras.length).toFixed(1) 
+                : 0;
+            
+            // Eficiencia SV
+            const requeridos = datosFiltrados.filter(d => d['SV requerido'] === 'Sí');
+            const requeridosConSV = requeridos.filter(d => d['Toma de SV'] === 'Sí').length;
+            const eficienciaSV = requeridos.length > 0 
+                ? ((requeridosConSV / requeridos.length) * 100).toFixed(1) 
+                : 0;
+            
+            const metricsHTML = `
+                <div class="metric-card">
+                    <h3>Total Consultas</h3>
+                    <div class="value">${total}</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Consultas con SV</h3>
+                    <div class="value">${conSV}</div>
+                    <div class="subvalue">${total > 0 ? ((conSV/total)*100).toFixed(1) : 0}% del total</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Consultas sin SV</h3>
+                    <div class="value">${sinSV}</div>
+                    <div class="subvalue">${total > 0 ? ((sinSV/total)*100).toFixed(1) : 0}% del total</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Eficiencia SV</h3>
+                    <div class="value">${eficienciaSV}%</div>
+                    <div class="subvalue">Cuando son requeridos</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Registros con Salida</h3>
+                    <div class="value">${conEstancia}</div>
+                    <div class="subvalue">${total > 0 ? ((conEstancia/total)*100).toFixed(1) : 0}% del total</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Sin Registro de Salida</h3>
+                    <div class="value">${sinEstancia}</div>
+                    <div class="subvalue">${porcSinEstancia}% sin registro</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Estancia Promedio</h3>
+                    <div class="value">${estanciaPromedio}</div>
+                    <div class="subvalue">minutos</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Demora Promedio</h3>
+                    <div class="value">${demoraPromedio}</div>
+                    <div class="subvalue">minutos (${demoras.length} registros)</div>
+                </div>
+            `;
+            
+            document.getElementById('metrics-container').innerHTML = metricsHTML;
+        }
+        
+        function crearGraficos() {
+            // Destruir gráficos anteriores
+            Object.values(charts).forEach(chart => {
+                if(chart && chart.destroy) chart.destroy();
+            });
+            charts = {};
+            
+            const container = document.getElementById('charts-container');
+            container.innerHTML = '';
+            
+            const colorPrincipal = '#8B2F2F';
+            const colorSecundario = '#5A5552';
+            
+            // Crear gráficos
+            crearGraficoSV(container, colorPrincipal, colorSecundario);
+            crearGraficoTurno(container, colorPrincipal, colorSecundario);
+            crearGraficoServicios(container, colorPrincipal);
+            crearGraficoHorasPico(container, colorPrincipal);
+            crearGraficoProfesionales(container, colorSecundario);
+            crearGraficoDias(container, colorPrincipal);
+            crearGraficoEstancia(container, colorSecundario);
+            crearGraficoTimeline(container, colorPrincipal);
+            crearTablaEficiencia(container);
+        }
+        
+        function crearGraficoSV(container, colorPrincipal, colorSecundario) {
+            const conSV = datosFiltrados.filter(d => d['Toma de SV'] === 'Sí').length;
+            const sinSV = datosFiltrados.filter(d => d['Toma de SV'] === 'No').length;
+            
+            const card = crearTarjetaGrafico('📊 Consultas con/sin Signos Vitales', 'chart-sv', 'size-small');
+            container.appendChild(card);
+            
+            const canvas = card.querySelector('canvas');
+            charts.sv = new Chart(canvas, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Con Signos Vitales', 'Sin Signos Vitales'],
+                    datasets: [{
+                        data: [conSV, sinSV],
+                        backgroundColor: [colorPrincipal, colorSecundario],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { padding: 15, font: { size: 12 } } }
+                    }
+                }
+            });
+        }
+        
+        function crearGraficoTurno(container, colorPrincipal, colorSecundario) {
+            const turnos = {};
+            datosFiltrados.forEach(d => {
+                turnos[d.Turno] = (turnos[d.Turno] || 0) + 1;
+            });
+            
+            const card = crearTarjetaGrafico('⏰ Consultas por Turno', 'chart-turno', 'size-small');
+            container.appendChild(card);
+            
+            const canvas = card.querySelector('canvas');
+            charts.turno = new Chart(canvas, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(turnos),
+                    datasets: [{
+                        data: Object.values(turnos),
+                        backgroundColor: [colorPrincipal, '#A64444'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { padding: 15, font: { size: 12 } } }
+                    }
+                }
+            });
+        }
+        
+        function crearGraficoServicios(container, colorPrincipal) {
+            const servicios = {};
+            datosFiltrados.forEach(d => {
+                servicios[d.Servicio] = (servicios[d.Servicio] || 0) + 1;
+            });
+            const serviciosTop = Object.entries(servicios)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+            
+            const card = crearTarjetaGrafico('🏥 Top 10 Servicios con más Citas', 'chart-servicios', 'size-full');
+            container.appendChild(card);
+            
+            const canvas = card.querySelector('canvas');
+            charts.servicios = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: serviciosTop.map(s => s[0]),
+                    datasets: [{
+                        label: 'Cantidad de Citas',
+                        data: serviciosTop.map(s => s[1]),
+                        backgroundColor: colorPrincipal,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { 
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function crearGraficoHorasPico(container, colorPrincipal) {
+            const horas = {};
+            for(let i = 0; i < 24; i++) horas[i] = 0;
+            datosFiltrados.forEach(d => {
+                if(d.Hora_del_dia !== null) {
+                    horas[d.Hora_del_dia] = (horas[d.Hora_del_dia] || 0) + 1;
+                }
+            });
+            
+            const horasLabels = Object.keys(horas).map(h => `${h}:00`);
+            const horasData = Object.values(horas);
+            
+            const card = crearTarjetaGrafico('🕐 Horas Pico - Distribución de Consultas', 'chart-horas', 'size-full');
+            container.appendChild(card);
+            
+            const canvas = card.querySelector('canvas');
+            charts.horasPico = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: horasLabels,
+                    datasets: [{
+                        label: 'Consultas por Hora',
+                        data: horasData,
+                        borderColor: colorPrincipal,
+                        backgroundColor: 'rgba(139, 47, 47, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointBackgroundColor: colorPrincipal,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function crearGraficoProfesionales(container, colorSecundario) {
+            const profesionales = {};
+            datosFiltrados.forEach(d => {
+                if(d.Profesional !== 'Sin asignar') {
+                    profesionales[d.Profesional] = (profesionales[d.Profesional] || 0) + 1;
+                }
+            });
+            const profesionalesTop = Object.entries(profesionales)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+            
+            const card = crearTarjetaGrafico('👨‍⚕️ Top 10 Profesionales', 'chart-profesionales', 'size-large');
+            container.appendChild(card);
+            
+            const canvas = card.querySelector('canvas');
+            charts.profesionales = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: profesionalesTop.map(p => p[0]),
+                    datasets: [{
+                        label: 'Consultas',
+                        data: profesionalesTop.map(p => p[1]),
+                        backgroundColor: colorSecundario,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { 
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function crearGraficoDias(container, colorPrincipal) {
+            const diasOrden = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+            const dias = {};
+            diasOrden.forEach(d => dias[d] = 0);
+            datosFiltrados.forEach(d => {
+                if(d.Dia_semana) {
+                    dias[d.Dia_semana] = (dias[d.Dia_semana] || 0) + 1;
+                }
+            });
+            
+            const card = crearTarjetaGrafico('📅 Consultas por Día de la Semana', 'chart-dias', 'size-medium');
+            container.appendChild(card);
+            
+            const canvas = card.querySelector('canvas');
+            charts.dias = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: diasOrden,
+                    datasets: [{
+                        label: 'Consultas',
+                        data: diasOrden.map(d => dias[d]),
+                        backgroundColor: colorPrincipal,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function crearGraficoEstancia(container, colorSecundario) {
+            const estanciasServicio = {};
+            datosFiltrados.forEach(d => {
+                if(d['Total Estancia'] >= 0) {
+                    if(!estanciasServicio[d.Servicio]) {
+                        estanciasServicio[d.Servicio] = [];
+                    }
+                    estanciasServicio[d.Servicio].push(d['Total Estancia']);
+                }
+            });
+            
+            const estanciaPromServicio = Object.entries(estanciasServicio)
+                .map(([servicio, estancias]) => ({
+                    servicio,
+                    promedio: estancias.reduce((a, b) => a + b, 0) / estancias.length
+                }))
+                .sort((a, b) => b.promedio - a.promedio)
+                .slice(0, 10);
+            
+            const card = crearTarjetaGrafico('⏱️ Tiempo de Estancia por Servicio (min)', 'chart-estancia', 'size-full');
+            container.appendChild(card);
+            
+            const canvas = card.querySelector('canvas');
+            charts.estancia = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: estanciaPromServicio.map(e => e.servicio),
+                    datasets: [{
+                        label: 'Minutos Promedio',
+                        data: estanciaPromServicio.map(e => e.promedio.toFixed(1)),
+                        backgroundColor: colorSecundario,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { 
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function crearGraficoTimeline(container, colorPrincipal) {
+            const consultasPorFecha = {};
+            datosFiltrados.forEach(d => {
+                consultasPorFecha[d.Fecha] = (consultasPorFecha[d.Fecha] || 0) + 1;
+            });
+            
+            const fechasOrdenadas = Object.keys(consultasPorFecha).sort();
+            
+            const card = crearTarjetaGrafico('📈 Consultas por Fecha', 'chart-timeline', 'size-full');
+            container.appendChild(card);
+            
+            const canvas = card.querySelector('canvas');
+            charts.timeline = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: fechasOrdenadas.map(f => new Date(f).toLocaleDateString('es-MX', {month: 'short', day: 'numeric'})),
+                    datasets: [{
+                        label: 'Consultas Diarias',
+                        data: fechasOrdenadas.map(f => consultasPorFecha[f]),
+                        borderColor: colorPrincipal,
+                        backgroundColor: 'rgba(139, 47, 47, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: colorPrincipal,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function crearTablaEficiencia(container) {
+            const card = document.createElement('div');
+            card.className = 'chart-card size-full';
+            
+            const header = document.createElement('div');
+            header.className = 'chart-header';
+            header.innerHTML = '<h3>📊 Eficiencia de Signos Vitales por Categoría</h3>';
+            
+            const content = document.createElement('div');
+            content.className = 'chart-content';
+            
+            const categorias = ['Sí', 'Opcional', 'Endoscopia', 'No'];
+            let html = '<div class="table-container"><table><thead><tr><th>Categoría</th><th>Total Consultas</th><th>Con SV</th><th>Sin SV</th><th>Eficiencia</th></tr></thead><tbody>';
+            
+            categorias.forEach(cat => {
+                const datos = datosFiltrados.filter(d => d['SV requerido'] === cat);
+                const total = datos.length;
+                const conSV = datos.filter(d => d['Toma de SV'] === 'Sí').length;
+                const sinSV = total - conSV;
+                const eficiencia = total > 0 ? ((conSV / total) * 100).toFixed(1) : 0;
+                
+                let badgeClass = 'efficiency-high';
+                if(eficiencia < 50) badgeClass = 'efficiency-low';
+                else if(eficiencia < 80) badgeClass = 'efficiency-medium';
+                
+                html += `<tr>
+                    <td><strong>${cat}</strong></td>
+                    <td>${total}</td>
+                    <td>${conSV}</td>
+                    <td>${sinSV}</td>
+                    <td>
+                        ${eficiencia}%
+                        <span class="efficiency-badge ${badgeClass}">${eficiencia}%</span>
+                    </td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            content.innerHTML = html;
+            
+            card.appendChild(header);
+            card.appendChild(content);
+            container.appendChild(card);
+        }
+        
+        function crearTarjetaGrafico(titulo, id, sizeClass = 'size-medium') {
+            const card = document.createElement('div');
+            card.className = `chart-card ${sizeClass}`;
+            card.setAttribute('data-chart-id', id);
+            
+            const header = document.createElement('div');
+            header.className = 'chart-header';
+            
+            const h3 = document.createElement('h3');
+            h3.textContent = titulo;
+            
+            const controls = document.createElement('div');
+            controls.className = 'chart-controls';
+            
+            const sizes = [
+                { label: 'S', class: 'size-small' },
+                { label: 'M', class: 'size-medium' },
+                { label: 'L', class: 'size-large' },
+                { label: 'XL', class: 'size-full' }
+            ];
+            
+            sizes.forEach(size => {
+                const btn = document.createElement('button');
+                btn.textContent = size.label;
+                if(sizeClass === size.class) btn.classList.add('active');
+                btn.onclick = () => cambiarTamano(card, size.class, btn);
+                controls.appendChild(btn);
+            });
+            
+            header.appendChild(h3);
+            header.appendChild(controls);
+            
+            const content = document.createElement('div');
+            content.className = 'chart-content';
+            
+            const canvas = document.createElement('canvas');
+            canvas.id = id;
+            
+            content.appendChild(canvas);
+            card.appendChild(header);
+            card.appendChild(content);
+            
+            return card;
+        }
+        
+        function cambiarTamano(card, newSizeClass, btn) {
+            card.classList.remove('size-small', 'size-medium', 'size-large', 'size-full');
+            card.classList.add(newSizeClass);
+            
+            const buttons = card.querySelectorAll('.chart-controls button');
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const chartId = card.getAttribute('data-chart-id');
+            const chartKey = chartId.replace('chart-', '');
+            if(charts[chartKey]) {
+                setTimeout(() => {
+                    charts[chartKey].resize();
+                }, 100);
+            }
+        }
+    </script>
+</body>
+</html>
