@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard OncoTech - Análisis de Consultas</title>
+    <title>OncoTech Dashboard ULTIMATE 🚀 - Fusión Definitiva</title>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
@@ -525,6 +526,20 @@
                 grid-template-columns: 1fr;
             }
         }
+    
+        /* Dark Mode */
+        body.dark {
+            --oncotech-red: #A64444;
+            --bg-light: #121212;
+            --white: #1F1F1F;
+            --oncotech-dark: #f5f5f5;
+            --oncotech-light-gray: #2A2A2A;
+        }
+        body.dark .metric-card h3,
+        body.dark .chart-header h3 {
+            color: #f3d6d6;
+        }
+
     </style>
 </head>
 <body>
@@ -534,9 +549,14 @@
                 <img src="https://www.jotform.com/uploads/jeanp27/form_files/6323eca82437343f876eb45b46ac2835.62e8ba149e2bd2.49547120.png" alt="OncoTech Logo">
                 <div class="title-group">
                     <h1>Dashboard OncoTech</h1>
-                    <p>Análisis de Consultas y Signos Vitales</p>
+                    <p>Fusión Definitiva con TODAS las características</p>
                 </div>
             </div>
+            
+                <div class="dark-toggle" style="cursor: pointer; padding: 0.5rem; border-radius: 8px; background: rgba(255,255,255,0.1);" onclick="toggleDark()">
+                    <span>🌙 Modo Oscuro</span>
+                </div>
+
             <div class="period-info">
                 <strong>Período:</strong> <span id="periodo-texto">Cargando...</span><br>
                 <strong>Generado:</strong> <span id="fecha-generacion"></span>
@@ -1295,6 +1315,191 @@ const DATOS_EMBEBIDOS = [{"ID Cita": 15394, "Fecha": "2025-11-05", "Hora": "18:0
                 }, 100);
             }
         }
+    
+        
+        // ========== CARACTERÍSTICAS DE CHATGPT INTEGRADAS ==========
+        
+        // MODO OSCURO
+        function toggleDark() {
+            document.body.classList.toggle('dark');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+        }
+        
+        // Restaurar modo oscuro
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark');
+        }
+        
+        // EXPORTAR GRÁFICOS
+        function exportarGraficos() {
+            const charts = window.allCharts || {};
+            let count = 0;
+            Object.entries(charts).forEach(([id, chart]) => {
+                if (chart && chart.toBase64Image) {
+                    const url = chart.toBase64Image();
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `oncotech_grafica_${id}_${new Date().toISOString().split('T')[0]}.png`;
+                    a.click();
+                    count++;
+                }
+            });
+            alert(`✅ ${count} gráficos exportados exitosamente`);
+        }
+        
+        // GUARDAR PRESET
+        function guardarPreset() {
+            const preset = {
+                svReq: document.getElementById('filterSVReq').value,
+                desde: document.getElementById('filterDesde').value,
+                hasta: document.getElementById('filterHasta').value
+            };
+            localStorage.setItem('oncotechPreset', JSON.stringify(preset));
+            alert('✅ Preset guardado. Se restaurará automáticamente.');
+        }
+        
+        // RESTAURAR PRESET
+        function restaurarPreset() {
+            const preset = localStorage.getItem('oncotechPreset');
+            if (preset) {
+                try {
+                    const p = JSON.parse(preset);
+                    if (p.svReq) document.getElementById('filterSVReq').value = p.svReq;
+                    if (p.desde) document.getElementById('filterDesde').value = p.desde;
+                    if (p.hasta) document.getElementById('filterHasta').value = p.hasta;
+                } catch(e) {}
+            }
+        }
+        
+        // INSIGHTS AUTOMÁTICOS
+        function generarInsightsAuto(datos) {
+            if (!datos || datos.length === 0) {
+                document.getElementById('insightsAuto').innerHTML = '<p>No hay datos para analizar.</p>';
+                return;
+            }
+            
+            const insights = [];
+            
+            // Volumen
+            insights.push(`📊 <strong>Volumen:</strong> ${datos.length} consultas analizadas en el periodo.`);
+            
+            // Servicio con mayor estancia
+            const estanciaPorServicio = {};
+            datos.forEach(d => {
+                if (d["Total Estancia"] >= 0) {
+                    if (!estanciaPorServicio[d.Servicio]) estanciaPorServicio[d.Servicio] = [];
+                    estanciaPorServicio[d.Servicio].push(d["Total Estancia"]);
+                }
+            });
+            
+            const promedios = Object.entries(estanciaPorServicio)
+                .map(([srv, est]) => ({ servicio: srv, promedio: est.reduce((a,b)=>a+b,0) / est.length }))
+                .sort((a,b) => b.promedio - a.promedio);
+            
+            if (promedios.length > 0) {
+                insights.push(`⏱️ <strong>Mayor estancia:</strong> ${promedios[0].servicio} (${Math.round(promedios[0].promedio)} min promedio).`);
+            }
+            
+            // Mejor puntualidad
+            const conDemora = datos.filter(d => d.Demora >= 0);
+            const aTiempo = conDemora.filter(d => d.Demora === 0);
+            if (conDemora.length > 0) {
+                const pct = (aTiempo.length / conDemora.length * 100).toFixed(1);
+                insights.push(`✅ <strong>Puntualidad:</strong> ${pct}% de consultas sin demora (${aTiempo.length}/${conDemora.length}).`);
+            }
+            
+            // Eficiencia SV
+            const svReq = datos.filter(d => d["SV requerido"] === "Sí");
+            const svOk = svReq.filter(d => d["Toma de SV"] === "Sí");
+            if (svReq.length > 0) {
+                const eff = (svOk.length / svReq.length * 100).toFixed(1);
+                insights.push(`🩺 <strong>Eficiencia SV:</strong> ${eff}% de cumplimiento (${svOk.length}/${svReq.length}).`);
+            }
+            
+            // Outliers
+            const outliers = datos.filter(d => d["Total Estancia"] > 180);
+            if (outliers.length > 0) {
+                insights.push(`⚠️ <strong>Alerta:</strong> ${outliers.length} consulta(s) con estancia >180 min.`);
+            }
+            
+            // Distribución por turno
+            const mat = datos.filter(d => d.Turno === 'Matutino').length;
+            const vesp = datos.filter(d => d.Turno === 'Vespertino').length;
+            insights.push(`📈 <strong>Turnos:</strong> ${mat} matutinas vs ${vesp} vespertinas.`);
+            
+            document.getElementById('insightsAuto').innerHTML = insights.join('<br><br>');
+        }
+        
+        // TOGGLE ETIQUETAS
+        let labelsActive = {};
+        function toggleLabels(chartId) {
+            labelsActive[chartId] = !labelsActive[chartId];
+            const btn = document.getElementById(`labelBtn${chartId}`);
+            if (btn) btn.classList.toggle('active');
+            aplicarFiltros(); // Regenerar
+        }
+        
+        // FILTROS AUTOMÁTICOS
+        function initFiltrosAuto() {
+            // Limitar calendario
+            const fechas = datosRaw.map(d => new Date(d.Fecha));
+            const min = new Date(Math.min(...fechas));
+            const max = new Date(Math.max(...fechas));
+            
+            const desde = document.getElementById('filterDesde');
+            const hasta = document.getElementById('filterHasta');
+            
+            desde.min = min.toISOString().split('T')[0];
+            desde.max = max.toISOString().split('T')[0];
+            hasta.min = min.toISOString().split('T')[0];
+            hasta.max = max.toISOString().split('T')[0];
+            
+            // Auto-aplicar
+            ['filterSVReq', 'filterDesde', 'filterHasta'].forEach(id => {
+                const elem = document.getElementById(id);
+                if (elem) elem.addEventListener('change', aplicarFiltros);
+            });
+            
+            console.log('✅ Filtros automáticos + calendario limitado');
+        }
+        
+        // INICIALIZACIÓN COMPLETA
+        window.addEventListener('DOMContentLoaded', () => {
+            restaurarPreset();
+            initFiltrosAuto();
+        });
+        
+        // Hook para agregar insights después de aplicar filtros
+        const aplicarFiltrosOriginal = window.aplicarFiltros;
+        window.aplicarFiltros = function() {
+            if (aplicarFiltrosOriginal) aplicarFiltrosOriginal();
+            
+            // Generar insights automáticos
+            const filtered = obtenerDatosFiltrados();
+            generarInsightsAuto(filtered);
+        };
+        
+        // INTEGRAR ETIQUETAS EN GRÁFICAS
+        if (window.crearGrafica) {
+            const crearOriginal = window.crearGrafica;
+            window.crearGrafica = function(canvas, tipo, datos, opciones, num) {
+                // Agregar datalabels si está activo
+                if (labelsActive[num]) {
+                    if (!opciones.plugins) opciones.plugins = {};
+                    opciones.plugins.datalabels = {
+                        display: true,
+                        color: '#fff',
+                        font: { weight: 'bold', size: 11 },
+                        formatter: (v) => v > 0 ? v : '',
+                        backgroundColor: 'rgba(139, 47, 47, 0.85)',
+                        borderRadius: 4,
+                        padding: 5
+                    };
+                }
+                return crearOriginal(canvas, tipo, datos, opciones, num);
+            };
+        }
+
     </script>
 </body>
 </html>
